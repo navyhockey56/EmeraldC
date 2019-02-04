@@ -1,0 +1,495 @@
+Integer___plus:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  rd_tab r4, r1, r2
+  rd_glob r5, ___ClassTable
+  const r6, "Integer"
+  rd_tab r7, r5, r6
+  mk_tab r8
+  const r9, "#class"
+  wr_tab r8, r9, r6
+  const r9, "#vtable"
+  wr_tab r8, r9, r7
+  const r9, "#contents"
+  add r10, r3, r4
+  wr_tab r8, r9, r10
+  ret r8
+Integer___minus:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  rd_tab r4, r1, r2
+  rd_glob r5, ___ClassTable
+  const r6, "Integer"
+  rd_tab r7, r5, r6
+  mk_tab r8
+  const r9, "#class"
+  wr_tab r8, r9, r6
+  const r9, "#vtable"
+  wr_tab r8, r9, r7
+  const r9, "#contents"
+  sub r10, r3, r4
+  wr_tab r8, r9, r10
+  ret r8
+Integer___divide:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  rd_tab r4, r1, r2
+  rd_glob r5, ___ClassTable
+  const r6, "Integer"
+  rd_tab r7, r5, r6
+  mk_tab r8
+  const r9, "#class"
+  wr_tab r8, r9, r6
+  const r9, "#vtable"
+  wr_tab r8, r9, r7
+  const r9, "#contents"
+  div r10, r3, r4
+  wr_tab r8, r9, r10
+  ret r8
+Integer___multiply:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  rd_tab r4, r1, r2
+  rd_glob r5, ___ClassTable
+  const r6, "Integer"
+  rd_tab r7, r5, r6
+  mk_tab r8
+  const r9, "#class"
+  wr_tab r8, r9, r6
+  const r9, "#vtable"
+  wr_tab r8, r9, r7
+  const r9, "#contents"
+  mul r10, r3, r4
+  wr_tab r8, r9, r10
+  ret r8
+Object___equal:
+  eq r0, r0, r1
+  if_zero r0, 12
+  rd_glob r0, ___ClassTable
+  const r1, "Integer"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  const r5, 1
+  wr_tab r3, r4, r5
+  ret r3
+  rd_glob r1, ___NULL
+  ret r1
+  rd_glob r0, ___ClassTable
+  const r1, "Integer"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  const r5, 1
+  wr_tab r3, r4, r5
+  ret r3
+  ret r3
+Map___find:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  has_tab r4, r3, r1
+  if_zero r4, 2
+  rd_tab r4, r3, r1
+  ret r4
+  const r2, "Key not in Map Object"
+  halt r2
+Bot___to_s:
+  rd_glob r0, ___ClassTable
+  const r1, "String"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  const r5, "nil"
+  wr_tab r3, r4, r5
+  ret r3
+String___length:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  const r12, length
+  call r12, 3, 3
+  mov r12, r3
+  rd_glob r0, ___ClassTable
+  const r1, "Integer"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  wr_tab r3, r4, r12
+  ret r3
+String___to_s:
+  ret r0
+Object___print:
+  rd_glob r1, ___NULL
+  ret r1
+main:
+  mk_tab r0
+  wr_glob ___ClassTable, r0
+  mk_tab r0
+  const r1, "equal?"
+  const r2, Object___equal
+  wr_tab r0, r1, r2
+  const r1, "to_s"
+  const r2, Object___to_s
+  wr_tab r0, r1, r2
+  const r1, "print"
+  const r2, Object___print
+  wr_tab r0, r1, r2
+  rd_glob r3, ___ClassTable
+  const r4, "Object"
+  wr_tab r3, r4, r0
+  mk_tab r0
+  const r1, "#sup"
+  const r2, "Object"
+  wr_tab r0, r1, r2
+  const r1, "equal?"
+  const r2, String___equal
+  wr_tab r0, r1, r2
+  const r1, "to_s"
+  const r2, String___to_s
+  wr_tab r0, r1, r2
+  const r1, "print"
+  const r2, String___print
+  wr_tab r0, r1, r2
+  const r1, "+"
+  const r2, String___plus
+  wr_tab r0, r1, r2
+  const r1, "length"
+  const r2, String___length
+  wr_tab r0, r1, r2
+  rd_glob r3, ___ClassTable
+  const r4, "String"
+  wr_tab r3, r4, r0
+  mk_tab r0
+  const r1, "#sup"
+  const r2, "Object"
+  wr_tab r0, r1, r2
+  const r1, "equal?"
+  const r2, Integer___equal
+  wr_tab r0, r1, r2
+  const r1, "to_s"
+  const r2, Integer___to_s
+  wr_tab r0, r1, r2
+  const r1, "print"
+  const r2, Integer___print
+  wr_tab r0, r1, r2
+  const r1, "+"
+  const r2, Integer___plus
+  wr_tab r0, r1, r2
+  const r1, "-"
+  const r2, Integer___minus
+  wr_tab r0, r1, r2
+  const r1, "*"
+  const r2, Integer___multiply
+  wr_tab r0, r1, r2
+  const r1, "/"
+  const r2, Integer___divide
+  wr_tab r0, r1, r2
+  rd_glob r3, ___ClassTable
+  const r4, "Integer"
+  wr_tab r3, r4, r0
+  mk_tab r0
+  const r1, "#sup"
+  const r2, "Object"
+  wr_tab r0, r1, r2
+  const r1, "has"
+  const r2, Map___has_key
+  wr_tab r0, r1, r2
+  const r1, "insert"
+  const r2, Map___insert
+  wr_tab r0, r1, r2
+  const r1, "find"
+  const r2, Map___find
+  wr_tab r0, r1, r2
+  const r1, "iter"
+  const r2, Map___iter
+  wr_tab r0, r1, r2
+  rd_glob r3, ___ClassTable
+  const r4, "Map"
+  wr_tab r3, r4, r0
+  mk_tab r0
+  const r1, "#sup"
+  const r2, "Object"
+  wr_tab r0, r1, r2
+  const r1, "to_s"
+  const r2, Bot___to_s
+  wr_tab r0, r1, r2
+  const r1, "print"
+  const r2, Bot___print
+  wr_tab r0, r1, r2
+  rd_glob r3, ___ClassTable
+  const r4, "Bot"
+  wr_tab r3, r4, r0
+  mk_tab r0
+  const r1, "#sup"
+  const r2, "Object"
+  wr_tab r0, r1, r2
+  rd_glob r3, ___ClassTable
+  const r2, "Super"
+  wr_tab r3, r2, r0
+  const r1, "foo"
+  const r2, Super___foo
+  wr_tab r0, r1, r2
+  mk_tab r0
+  const r1, "#vtable"
+  rd_glob r2, ___ClassTable
+  const r3, "Bot"
+  rd_tab r2, r2, r3
+  wr_tab r0, r1, r2
+  const r1, "#class"
+  wr_tab r0, r1, r3
+  wr_glob ___NULL, r0
+  mk_tab r0
+  const r1, "#vtable"
+  rd_glob r2, ___ClassTable
+  const r3, "Object"
+  rd_tab r2, r2, r3
+  wr_tab r0, r1, r2
+  const r1, "#class"
+  wr_tab r0, r1, r3
+  rd_glob r1, ___ClassTable
+  const r2, "Super"
+  rd_tab r3, r1, r2
+  mk_tab r4
+  const r5, "#class"
+  wr_tab r4, r5, r2
+  const r5, "#vtable"
+  wr_tab r4, r5, r3
+  rd_glob r6, ___ClassTable
+  const r7, "Integer"
+  rd_tab r8, r6, r7
+  mk_tab r9
+  const r10, "#class"
+  wr_tab r9, r10, r7
+  const r10, "#vtable"
+  wr_tab r9, r10, r8
+  const r10, "#contents"
+  const r11, 3
+  wr_tab r9, r10, r11
+  mov r12, r4
+  mov r13, r9
+  const r14, "#vtable"
+  const r15, "foo"
+  const r18, "#sup"
+  rd_glob r19, ___ClassTable
+  rd_tab r16, r12, r14
+  has_tab r17, r16, r15
+  if_zero r17, 3
+  rd_tab r17, r16, r15
+  call r17, 12, 13
+  jmp 7
+  has_tab r17, r16, r18
+  if_zero r17, 3
+  rd_tab r17, r16, r18
+  rd_tab r16, r19, r17
+  jmp -10
+  const r14, "No such method"
+  halt r14
+  mov r0, r12
+  const r1, "#vtable"
+  rd_tab r2, r0, r1
+  const r3, "to_s"
+  has_tab r4, r2, r3
+  if_zero r4, 5
+  rd_tab r4, r2, r3
+  call r4, 0, 0
+  const r3, "#contents"
+  rd_tab r0, r0, r3
+  ret r0
+  const r5, "#sup"
+  rd_tab r4, r2, r5
+  rd_glob r6, ___ClassTable
+  rd_tab r2, r6, r4
+  jmp -12
+Bot___print:
+  rd_glob r0, ___ClassTable
+  const r1, "String"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  const r5, "nil"
+  wr_tab r3, r4, r5
+  const r0, "nil"
+  const r1, print_string
+  call r1, 0, 0
+  ret r3
+Map___insert:
+  const r3, "#contents"
+  rd_tab r4, r0, r3
+  wr_tab r4, r1, r2
+  rd_glob r1, ___NULL
+  ret r1
+Map___iter:
+  rd_glob r1, ___NULL
+  ret r1
+Map___has_key:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  has_tab r4, r3, r1
+  if_zero r4, 12
+  rd_glob r0, ___ClassTable
+  const r1, "Integer"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  const r5, 1
+  wr_tab r3, r4, r5
+  ret r3
+  rd_glob r1, ___NULL
+  ret r1
+Object___to_s:
+  rd_glob r0, ___ClassTable
+  const r1, "String"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  const r5, ""
+  wr_tab r3, r4, r5
+  ret r3
+String___plus:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  rd_tab r4, r1, r2
+  const r12, concat
+  call r12, 3, 4
+  mov r12, r3
+  rd_glob r0, ___ClassTable
+  const r1, "String"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  wr_tab r3, r4, r12
+  ret r3
+Integer___equal:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  rd_tab r4, r1, r2
+  eq r1, r3, r4
+  if_zero r1, 12
+  rd_glob r0, ___ClassTable
+  const r1, "Integer"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  const r5, 1
+  wr_tab r3, r4, r5
+  ret r3
+  rd_glob r1, ___NULL
+  ret r1
+String___equal:
+  const r2, "#contents"
+  rd_tab r3, r0, r2
+  rd_tab r4, r1, r2
+  eq r1, r3, r4
+  if_zero r1, 12
+  rd_glob r0, ___ClassTable
+  const r1, "Integer"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  const r5, 1
+  wr_tab r3, r4, r5
+  ret r3
+  rd_glob r1, ___NULL
+  ret r1
+Integer___to_s:
+  const r1, "#contents"
+  rd_tab r2, r0, r1
+  const r1, to_s
+  call r1, 2, 2
+  mov r5, r2
+  rd_glob r0, ___ClassTable
+  const r1, "String"
+  rd_tab r2, r0, r1
+  mk_tab r3
+  const r4, "#class"
+  wr_tab r3, r4, r1
+  const r4, "#vtable"
+  wr_tab r3, r4, r2
+  const r4, "#contents"
+  wr_tab r3, r4, r5
+  ret r3
+Integer___print:
+  const r1, "#contents"
+  rd_tab r2, r0, r1
+  const r1, print_int
+  call r1, 2, 2
+  rd_glob r1, ___NULL
+  ret r1
+Super___foo:
+  rd_glob r1, ___ClassTable
+  const r2, "Integer"
+  rd_tab r3, r1, r2
+  mk_tab r4
+  const r5, "#class"
+  wr_tab r4, r5, r2
+  const r5, "#vtable"
+  wr_tab r4, r5, r3
+  const r5, "#contents"
+  const r6, 1
+  wr_tab r4, r5, r6
+  mov r7, r1
+  mov r8, r4
+  const r9, "#vtable"
+  const r10, "+"
+  const r13, "#sup"
+  rd_glob r14, ___ClassTable
+  rd_tab r11, r7, r9
+  has_tab r12, r11, r10
+  if_zero r12, 3
+  rd_tab r12, r11, r10
+  call r12, 7, 8
+  jmp 7
+  has_tab r12, r11, r13
+  if_zero r12, 3
+  rd_tab r12, r11, r13
+  rd_tab r11, r14, r12
+  jmp -10
+  const r9, "No such method"
+  halt r9
+  ret r7
+String___print:
+  const r1, "#contents"
+  const r2, print_string
+  rd_tab r1, r0, r1
+  call r2, 1, 1
+  rd_glob r1, ___NULL
+  ret r1

@@ -1,0 +1,1 @@
+if (nil.to_s()) then 1 else 2 end
