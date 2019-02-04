@@ -12,375 +12,362 @@ let retrieve_return instructions =
 	| _ -> failwith "return was not the last instruction"
 ;;
 
+let create_new_object class_name new_reg contents =
+	let r0 = new_reg () in 
+	let r1 = new_reg () in 
+	let r2 = new_reg () in 
+	let r3 = new_reg () in 
+	let r4 = new_reg () in 
+	
+	let instructions = 	
+	[|
+		I_rd_glob ((`L_Reg r0), Const.const_class_table);
+		I_const ((`L_Reg r1), (`L_Str class_name));
+		I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for strings*)
+			
+		I_mk_tab (`L_Reg r3); (*create the table representing the string*)
+			
+		I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
+			
+		I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of String*)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the string*)
+	|] in 
 
-let rec compile_exp exp new_reg local_env = match exp with  
-  | EInt n (*int*) -> 
-		let r0 = new_reg () in 
-		let r1 = new_reg () in 
-		let r2 = new_reg () in 
-		let r3 = new_reg () in 
-		let r4 = new_reg () in 
+	if not (contents = ()) then 
+		(* Set the content of the String object to the passed sptring *)	
 		let r5 = new_reg () in 
-		
-		[|
-			I_rd_glob ((`L_Reg r0), Const.const_class_table);
-			I_const ((`L_Reg r1), Const.const_int);
-			I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for integers*)
-			
-			I_mk_tab (`L_Reg r3); (*create the table representing the integer*)
-			
-			I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
-			
-			I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the integer*)
-			
-			I_const ((`L_Reg r4), Const.const_contents); (*key for mapping in the value of Integer*)
-			I_const ((`L_Reg r5), (`L_Int n)); (*value for mapping in the value of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); (*map #contents->Int value of n*)
-			I_ret (`L_Reg r3) (*return the created integer*)
+		Array.append instructions [|
+			I_const ((`L_Reg r4), Const.const_contents);
+			I_const ((`L_Reg r5), contents);
+			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); 
 		|]
+	else ();
+
+	Array.append instructions [|I_ret (`L_Reg r3)|]
+;;
+
+(*  
+	Create the instructions for an integer.
+*)
+let compile_eint n new_reg =
+	create_new_object Const.const_int new_reg (`L_Int n)
+;;
+
+(*
+	Create instructions for nil
+*)
+let compile_enil new_reg = 
+	let r0 = new_reg () in 
+	[|
+		I_rd_glob ((`L_Reg r0), Const.const_null);
+		I_ret (`L_Reg r0)
+	|]
+;;
+
+(*
+	Create instructions for self object.
+	If the self object is not mapped in the local environment, 
+	then return the null object
+*)
+let compile_eself new_reg local_env = 
+	if (Hashtbl.mem local_env const_self) then (* self is mapped *)
+		[| I_ret (Hashtbl.find local_env const_self) |]
+	else (* self is not mapped *)
+		compile_enil new_reg
+;;
+
+(*
+	Create instructions for a raw string
+*)
+let compile_estring str new_reg = 
+	create_new_object Const.const_string new_reg (`L_Str str)
+;;
+
+(*
+	Create instructions for a variable read  
+*)
+let compile_elocrd id new_reg = 
+	if (Hashtbl.mem local_env id) then (* the variable is bound *)
+		[| I_ret (Hashtbl.find local_env id) |]
+	else (* the variable is not bound, return nil *)
+		compile_enil new_reg
+;;
+
+(*
+	Create instructions for a field read
+*)
+let compile_eflrd id new_reg = 
+	let r0 = `L_Reg (new_reg ()) in 
+	let r1 = `L_Reg (new_reg ()) in 
+	let self = Hashtbl.find local_env const_self in
+	[|
+		I_const (r0, (`L_Str id));
+		I_has_tab (r1, self, r0);
+		I_if_zero (r1, 2);
+			
+		I_rd_tab (r1, self, r0);
+		I_jmp 1;
+			
+		I_rd_glob (r1, Const.const_null);
+		I_ret r1; 
+	|]
+;;
+
+(*
+	Create instructions for a new map object
+*)
+let compile_new_map new_reg = 
+	let r0 = new_reg () in 
+	let r1 = new_reg () in 
+	let r2 = new_reg () in 
+	let r3 = new_reg () in 
+	let r4 = new_reg () in 
+	let r5 = new_reg () in 
+		
+	[|
+		I_rd_glob ((`L_Reg r0), Const.const_class_table);
+		I_const ((`L_Reg r1), (`L_Str const_map));
+		I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for integers*)
+			
+		I_mk_tab (`L_Reg r3); (*create the table representing the integer*)
+			
+		I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
+			
+		I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of Integer*)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the integer*)
+			
+		I_const ((`L_Reg r4), Const.const_contents); (*key for mapping in the value of Integer*)
+		I_mk_tab (`L_Reg r5); (*value for mapping in the value of Integer*)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); (*map #contents->Int value of n*)
+
+		I_ret (`L_Reg r3) (*return the created integer*)
+	|]
+;;
+
+(*
+	Throws an error if someone tries to create a new Bot Object.
+*)
+let compile_new_bot () = 
+	failwith "Access forbidden - Cannot instratiate a new Bot Object."
+;;
+
+let rec compile_exp exp new_reg local_env = 
+	match exp with  
+  | EInt n -> 
+  	compile_eint n new_reg
 		
   | ENil -> 
-		let r0 = new_reg () in 
-		[|
-			I_rd_glob ((`L_Reg r0), Const.const_null);
-			I_ret (`L_Reg r0)
-		|]
+		compile_enil new_reg
   
   | ESelf -> 
-		if (Hashtbl.mem local_env const_self) then (
-			let reg_of_obj = Hashtbl.find local_env const_self in 
-			[|I_ret reg_of_obj|]
-		) else ( (*the variable is not bound in this env*)
-			let r0 = `L_Reg (new_reg ()) in 
-			[|
-				I_rd_glob (r0, Const.const_null); (*Get the null object*)
-				I_ret r0; (*Return the null object*)
-			|]
-		)
+		compile_eself new_reg local_env
   
-  | EString str (*string*) -> 
-		let r0 = new_reg () in 
-		let r1 = new_reg () in 
-		let r2 = new_reg () in 
-		let r3 = new_reg () in 
-		let r4 = new_reg () in 
-		let r5 = new_reg () in 
-		
-		[|
-			I_rd_glob ((`L_Reg r0), Const.const_class_table);
-			I_const ((`L_Reg r1), Const.const_string);
-			I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for strings*)
-			
-			I_mk_tab (`L_Reg r3); (*create the table representing the string*)
-			
-			I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
-			
-			I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of String*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the string*)
-			
-			I_const ((`L_Reg r4), Const.const_contents); (*key for mapping in the value of Integer*)
-			I_const ((`L_Reg r5), (`L_Str str)); (*value for mapping in the value of String*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); (*map #contents->String value of str*)
-			I_ret (`L_Reg r3) (*return the created string object*)
-		|]
+  | EString str -> 
+		compile_estring str new_reg
   
   | ELocRd id (*string*) ->   (* Read a local variable *) 
-		if (Hashtbl.mem local_env id) then ( (*the variable exists in the environment*)
-			let reg_of_obj = Hashtbl.find local_env id in  (*get the register holding the variable*)
-			[|I_ret reg_of_obj|] (*return the variable*)
-		) else ( (*the variable is not bound in this env*)
-			let r0 = `L_Reg (new_reg ()) in 
-			[|
-				I_rd_glob (r0, Const.const_null); (*Get the null object*)
-				I_ret r0; (*Return the null object*)
-			|]
-		)
+  	compile_elocrd id new_reg
   
   | ELocWr (id, exp) (*string * expr*) ->  (* Write a local variable *) 
-		let code_of_exp = compile_exp exp new_reg local_env in (*generate the code in the expr*)
-		
-		if (Hashtbl.mem local_env id) then (
-		let reg_of_obj, code_of_exp = retrieve_return code_of_exp in (*get the register of the returned object*)
-			Array.append code_of_exp [|I_mov ((Hashtbl.find local_env id), reg_of_obj); I_ret (Hashtbl.find local_env id)|]
-		) else (
-		let reg_of_obj, _ = retrieve_return code_of_exp in (*get the register of the returned object*)
-		Hashtbl.replace local_env id reg_of_obj; (*map the variable name to the objects register*)
-		code_of_exp (*return the generated code*)
-		)
+		compile_elocwr id exp new_reg local_env
 		
   | EFldRd id (*string*) -> 
-		let r0 = `L_Reg (new_reg ()) in 
-		let r1 = `L_Reg (new_reg ()) in 
-		let self = Hashtbl.find local_env const_self in
-		[|
-			I_const (r0, (`L_Str id));
-			I_has_tab (r1, self, r0);
-			I_if_zero (r1, 2);
+		compile_eflrd id new_reg
 			
-			I_rd_tab (r1, self, r0);
-			I_jmp 1;
-			
-			I_rd_glob (r1, Const.const_null);
-			I_ret r1; 
-		|]
-		
-		
   | EFldWr (id, exp) (*string * expr*) ->  
-		let code_of_exp = compile_exp exp new_reg local_env in 
-		let exp_obj, code_of_exp = retrieve_return code_of_exp in 
-		
-		let r0 = `L_Reg (new_reg ()) in 
-		let self = Hashtbl.find local_env const_self in
-		let instructions = [|
-			I_const (r0, (`L_Str id));
-			I_wr_tab (self, r0, exp_obj);
-			I_ret exp_obj
-		|] in 
-		Array.append code_of_exp instructions
-	
+  	compile_eflwr id exp new_reg local_env
   
   | EIf (exp1, exp2, exp3) (*expr * expr * expr*) ->  
-		let code_of_exp1 = compile_exp exp1 new_reg local_env in 
-		let exp_obj1, code_of_exp1 = retrieve_return code_of_exp1 in 
-		
-		let code_of_exp2 = compile_exp exp2 new_reg local_env in 
-		let exp_obj2, code_of_exp2 = retrieve_return code_of_exp2 in 
-		
-		let code_of_exp3 = compile_exp exp3 new_reg local_env in 
-		let exp_obj3, code_of_exp3 = retrieve_return code_of_exp3 in 
-
-		let r0 = `L_Reg (new_reg ()) in 
-		let r1 = `L_Reg (new_reg ()) in 
-		let r2 = `L_Reg (new_reg ()) in 
-		let r3 = `L_Reg (new_reg ()) in 
-		let r5 = `L_Reg (new_reg ()) in 
-		
-		let instructions1 = [|
-			I_const (r0, Const.const_class);
-			I_rd_tab (r1, exp_obj1, r0);
-			I_const (r2, (`L_Str const_bot));
-			
-			I_eq (r3, r1, r2);
-			I_if_zero (r3, ((Array.length code_of_exp3) + 2));
-		|] in  
-		
-		let instructions = Array.append code_of_exp1 instructions1 in 
-		
-		let instructions = Array.append instructions code_of_exp3 in 
-		let instructions1 = [|
-			I_mov (r5, exp_obj3);
-			I_jmp ((Array.length code_of_exp2) + 1) 
-		|] in 
-		
-		let instructions = Array.append instructions instructions1 in 
-		let instructions = Array.append instructions code_of_exp2 in 
-		let instructions1 = [|
-			I_mov (r5, exp_obj2);
-			I_ret r5
-		|] in 
-		Array.append instructions instructions1
+		compile_eif exp1 exp2 exp3 new_reg local_env
 		
   | EWhile (exp1, exp2) (*expr * expr*) ->
-		let code_of_exp1 = compile_exp exp1 new_reg local_env in 
-		let exp_obj1, code_of_exp1 = retrieve_return code_of_exp1 in 
-		
-		let code_of_exp2 = compile_exp exp2 new_reg local_env in 
-		let exp_obj2, code_of_exp2 = retrieve_return code_of_exp2 in 
-		
-		let r0 = `L_Reg (new_reg ()) in 
-		let r1 = `L_Reg (new_reg ()) in 
-		let r2 = `L_Reg (new_reg ()) in 
-		let r3 = `L_Reg (new_reg ()) in 
-		let r4 = `L_Reg (new_reg ()) in 
-		
-		let instructions = [|
-			I_const (r0, Const.const_class);
-			I_rd_tab (r1, exp_obj1, r0);
-			I_const (r2, (`L_Str const_bot));
-			
-			I_eq (r3, r1, r2);
-			I_const (r4, `L_Int 1);
-			I_sub (r3, r3, r4);
-			I_if_zero (r3, ((Array.length code_of_exp2) + 1));
-		|] in  
-		
-		let instructions = Array.append code_of_exp1 instructions in 
-		let instructions = Array.append instructions code_of_exp2 in 
-		let instructions = Array.append instructions [|I_jmp ((-1)*((Array.length code_of_exp2) + (Array.length code_of_exp1) + 8))|] in 
-		
-		let instructions1 = [|
-			I_ret exp_obj1
-		|] in 
-		Array.append instructions instructions1
+		compile_ewhile exp1 exp2 new_reg local_env
 		
   | ESeq (exp1, exp2) (*expr * expr*) -> 
+  	compile_eseq exp1 exp2 new_reg local_env
+	
+  | ENew "String" -> 	
+  	compile_estring "" new_reg
+		
+  | ENew "Integer" -> 	
+		compile_eint 0 new_reg
+		
+	| ENew "Map" -> 	
+		compile_new_map new_reg
+		
+  | ENew "Bot" -> 
+  	compile_new_bot ()
+  
+  | ENew class_name (*string*) -> 
+  	create_new_object class_name new_reg ()
+		
+  | EInstanceOf (obj, class_name) (*expr * string*) -> 
+		compile_einstanceof obj class_name new_reg local_env
+		
+  | EInvoke (obj, meth_name, arg_lst) (*expr * string * (expr list)*) -> 
+		compile_einvoke obj meth_name arg_lst new_reg local_env
+
+
+and compile_elocwr id exp new_reg local_env = 
+	let code_of_exp = compile_exp exp new_reg local_env in
+		
+	if (Hashtbl.mem local_env id) then (* This variable already exists  *)
+		let reg_of_obj, code_of_exp = retrieve_return code_of_exp in
+		Array.append code_of_exp 
+		[|
+			I_mov ((Hashtbl.find local_env id), reg_of_obj); 
+			I_ret (Hashtbl.find local_env id)
+		|]
+	else ( (* This is a new variable *)
+		(*get the register of the returned object*)
+		let reg_of_obj, _ = retrieve_return code_of_exp in
+		(* map the variable name to the objects register *)
+		Hashtbl.replace local_env id reg_of_obj;
+		(*return the generated code*)
+		code_of_exp 
+	)
+
+and compile_eflwr id exp new_reg local_env = 
+	let code_of_exp = compile_exp exp new_reg local_env in 
+	let exp_obj, code_of_exp = retrieve_return code_of_exp in 
+		
+	let r0 = `L_Reg (new_reg ()) in 
+	let self = Hashtbl.find local_env const_self in
+	
+	Array.append code_of_exp 
+	[|
+		I_const (r0, (`L_Str id));
+		I_wr_tab (self, r0, exp_obj);
+		I_ret exp_obj
+	|]
+
+and compile_eif exp1 exp2 exp3 new_reg local_env = 
+	let code_of_exp1 = compile_exp exp1 new_reg local_env in 
+	let exp_obj1, code_of_exp1 = retrieve_return code_of_exp1 in 
+		
+	let code_of_exp2 = compile_exp exp2 new_reg local_env in 
+	let exp_obj2, code_of_exp2 = retrieve_return code_of_exp2 in 
+		
+	let code_of_exp3 = compile_exp exp3 new_reg local_env in 
+	let exp_obj3, code_of_exp3 = retrieve_return code_of_exp3 in 
+
+	let r0 = `L_Reg (new_reg ()) in 
+	let r1 = `L_Reg (new_reg ()) in 
+	let r2 = `L_Reg (new_reg ()) in 
+	let r3 = `L_Reg (new_reg ()) in 
+	let r5 = `L_Reg (new_reg ()) in 
+		
+	let instructions1 = [|
+		I_const (r0, Const.const_class);
+		I_rd_tab (r1, exp_obj1, r0);
+		I_const (r2, (`L_Str const_bot));
+			
+		I_eq (r3, r1, r2);
+		I_if_zero (r3, ((Array.length code_of_exp3) + 2));
+	|] in  
+		
+	let instructions = Array.append code_of_exp1 instructions1 in 
+		
+	let instructions = Array.append instructions code_of_exp3 in 
+	let instructions1 = [|
+		I_mov (r5, exp_obj3);
+		I_jmp ((Array.length code_of_exp2) + 1) 
+	|] in 
+		
+	let instructions = Array.append instructions instructions1 in 
+	let instructions = Array.append instructions code_of_exp2 in 
+	let instructions1 = [|
+		I_mov (r5, exp_obj2);
+		I_ret r5
+	|] in 
+	Array.append instructions instructions1
+
+and compile_ewhile exp1 exp2 new_reg local_env =
+	let code_of_exp1 = compile_exp exp1 new_reg local_env in 
+	let exp_obj1, code_of_exp1 = retrieve_return code_of_exp1 in 
+		
+	let code_of_exp2 = compile_exp exp2 new_reg local_env in 
+	let exp_obj2, code_of_exp2 = retrieve_return code_of_exp2 in 
+		
+	let r0 = `L_Reg (new_reg ()) in 
+	let r1 = `L_Reg (new_reg ()) in 
+	let r2 = `L_Reg (new_reg ()) in 
+	let r3 = `L_Reg (new_reg ()) in 
+	let r4 = `L_Reg (new_reg ()) in 
+		
+	let instructions = [|
+		I_const (r0, Const.const_class);
+		I_rd_tab (r1, exp_obj1, r0);
+		I_const (r2, (`L_Str const_bot));
+			
+		I_eq (r3, r1, r2);
+		I_const (r4, `L_Int 1);
+		I_sub (r3, r3, r4);
+		I_if_zero (r3, ((Array.length code_of_exp2) + 1));
+	|] in  
+		
+	let instructions = Array.append code_of_exp1 instructions in 
+	let instructions = Array.append instructions code_of_exp2 in 
+	let instructions = Array.append instructions [|I_jmp ((-1)*((Array.length code_of_exp2) + (Array.length code_of_exp1) + 8))|] in 
+		
+	let instructions1 = [|
+		I_ret exp_obj1
+	|] in 
+	Array.append instructions instructions1
+
+and compile_eseq exp1 exp2 new_reg local_env = 
 	let code_of_exp1 = compile_exp exp1 new_reg local_env in (*generate code for exp1*)
 	let _, code_of_exp1 = retrieve_return code_of_exp1 in  (*remove the return statement*)
 	let code_of_exp2 = compile_exp exp2 new_reg local_env in (*generate the code for exp2*)
 	Array.append code_of_exp1 code_of_exp2 (*create a single array with code for both exps*)
-	
-  | ENew "String" -> 	
-		let r0 = new_reg () in 
-		let r1 = new_reg () in 
-		let r2 = new_reg () in 
-		let r3 = new_reg () in 
-		let r4 = new_reg () in 
-		let r5 = new_reg () in 
-		
-		[|
-			I_rd_glob ((`L_Reg r0), Const.const_class_table);
-			I_const ((`L_Reg r1), Const.const_string);
-			I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for strings*)
-			
-			I_mk_tab (`L_Reg r3); (*create the table representing the string*)
-			
-			I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
-			
-			I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of String*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the string*)
-			
-			I_const ((`L_Reg r4), Const.const_contents); (*key for mapping in the value of Integer*)
-			I_const ((`L_Reg r5), (`L_Str "")); (*value for mapping in the value of String*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); (*map #contents->String value of str*)
-			I_ret (`L_Reg r3) (*return the created string object*)
-		|]
-		
-  | ENew "Integer" -> 	
-		let r0 = new_reg () in 
-		let r1 = new_reg () in 
-		let r2 = new_reg () in 
-		let r3 = new_reg () in 
-		let r4 = new_reg () in 
-		let r5 = new_reg () in 
-		
-		[|
-			I_rd_glob ((`L_Reg r0), Const.const_class_table);
-			I_const ((`L_Reg r1), Const.const_int);
-			I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for integers*)
-			
-			I_mk_tab (`L_Reg r3); (*create the table representing the integer*)
-			
-			I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
-			
-			I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the integer*)
-			
-			I_const ((`L_Reg r4), Const.const_contents); (*key for mapping in the value of Integer*)
-			I_const ((`L_Reg r5), (`L_Int 0)); (*value for mapping in the value of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); (*map #contents->Int value of n*)
-			I_ret (`L_Reg r3) (*return the created integer*)
-		|]
-		
-	| ENew "Map" -> 	
-		let r0 = new_reg () in 
-		let r1 = new_reg () in 
-		let r2 = new_reg () in 
-		let r3 = new_reg () in 
-		let r4 = new_reg () in 
-		let r5 = new_reg () in 
-		
-		[|
-			I_rd_glob ((`L_Reg r0), Const.const_class_table);
-			I_const ((`L_Reg r1), (`L_Str const_map));
-			I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for integers*)
-			
-			I_mk_tab (`L_Reg r3); (*create the table representing the integer*)
-			
-			I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
-			
-			I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the integer*)
-			
-			I_const ((`L_Reg r4), Const.const_contents); (*key for mapping in the value of Integer*)
-			I_mk_tab (`L_Reg r5); (*value for mapping in the value of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); (*map #contents->Int value of n*)
-			I_ret (`L_Reg r3) (*return the created integer*)
-		|]
-		
-  | ENew "Bot" -> 
-	let r0 = new_reg () in 
-	[|
-		I_const ((`L_Reg r0), (`L_Str "Cannot instantiate Bot"));
-		I_halt (`L_Reg r0)
-	|]
-  
-  | ENew class_name (*string*) -> 
-		let r0 = new_reg () in 
-		let r1 = new_reg () in 
-		let r2 = new_reg () in 
-		let r3 = new_reg () in 
-		let r4 = new_reg () in 
-		
-		[|
-			I_rd_glob ((`L_Reg r0), Const.const_class_table);
-			I_const ((`L_Reg r1), (`L_Str class_name));
-			I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for strings*)
-			
-			I_mk_tab (`L_Reg r3); (*create the table representing the string*)
-			
-			I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
-			
-			I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of String*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the string*)
-		
-			I_ret (`L_Reg r3) (*return the created string object*)
-		|]
-		
-  | EInstanceOf (obj, class_name) (*expr * string*) -> 
-		let code_of_exp = compile_exp obj new_reg local_env in (*generate code for exp1*)
-		let reg_exp, instructions = retrieve_return code_of_exp in  (*remove the return statement*)
-		
-		let r0 = new_reg () in 
-		let r1 = new_reg () in 
-		let r2 = new_reg () in 
-		let r3 = new_reg () in 
-		let r4 = new_reg () in 
-		let r5 = new_reg () in 
 
-		let check_instance = [|
-			I_const ((`L_Reg r0), (`L_Str class_name));
-			I_const ((`L_Reg r1), Const.const_class);
-			I_rd_tab ((`L_Reg r1), reg_exp, (`L_Reg r1));
+and compile_einstanceof obj class_name new_reg local_env = 
+	let code_of_exp = compile_exp obj new_reg local_env in (*generate code for exp1*)
+	let reg_exp, instructions = retrieve_return code_of_exp in  (*remove the return statement*)
 		
-			I_eq ((`L_Reg r0), (`L_Reg r1), (`L_Reg r0));
-			I_if_zero ((`L_Reg r0), 13);
-			
-			I_rd_glob ((`L_Reg r0), Const.const_class_table);
-			I_const ((`L_Reg r1), Const.const_int);
-			I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for integers*)
-			
-			I_mk_tab (`L_Reg r3); (*create the table representing the integer*)
-			
-			I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
-			
-			I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the integer*)
-			
-			I_const ((`L_Reg r4), Const.const_contents); (*key for mapping in the value of Integer*)
-			I_const ((`L_Reg r5), (`L_Int 1)); (*value for mapping in the value of Integer*)
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); (*map #contents->Int value of n*)
-			I_mov ((`L_Reg r0), (`L_Reg r3)); (*return the created integer*)
-			I_jmp 1; 
-			
-			I_rd_glob ((`L_Reg r0), Const.const_null);
-			I_ret (`L_Reg r0)
-			
-		|] in 
-		Array.append instructions check_instance
+	let r0 = new_reg () in 
+	let r1 = new_reg () in 
+	let r2 = new_reg () in 
+	let r3 = new_reg () in 
+	let r4 = new_reg () in 
+	let r5 = new_reg () in 
+
+	Array.append instructions [|
+		I_const ((`L_Reg r0), (`L_Str class_name));
+		I_const ((`L_Reg r1), Const.const_class);
+		I_rd_tab ((`L_Reg r1), reg_exp, (`L_Reg r1));
 		
-  | EInvoke (obj, meth_name, arg_lst) (*expr * string * (expr list)*) -> 
-		
-		let instructions = compile_exp obj new_reg local_env in 
-		let obj_reg, instructions = retrieve_return instructions in 
-		(*
+		I_eq ((`L_Reg r0), (`L_Reg r1), (`L_Reg r0));
+		I_if_zero ((`L_Reg r0), 13);
+			
+		I_rd_glob ((`L_Reg r0), Const.const_class_table);
+		I_const ((`L_Reg r1), Const.const_int);
+		I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for integers*)
+			
+		I_mk_tab (`L_Reg r3); (*create the table representing the integer*)
+			
+		I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
+			
+		I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of Integer*)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the integer*)
+			
+		I_const ((`L_Reg r4), Const.const_contents); (*key for mapping in the value of Integer*)
+		I_const ((`L_Reg r5), (`L_Int 1)); (*value for mapping in the value of Integer*)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); (*map #contents->Int value of n*)
+		I_mov ((`L_Reg r0), (`L_Reg r3)); (*return the created integer*)
+		I_jmp 1; 
+			
+		I_rd_glob ((`L_Reg r0), Const.const_null);
+		I_ret (`L_Reg r0)	
+	|] 
+
+and compile_einvoke obj meth_name arg_lst new_reg local_env = 
+	let instructions = compile_exp obj new_reg local_env in 
+	let obj_reg, instructions = retrieve_return instructions in 
+	(*
 		for each expr in arg_lst
 			generate code of expr
 			get the return register, add to list
@@ -388,66 +375,66 @@ let rec compile_exp exp new_reg local_env = match exp with
 		for each register in list 
 			move the register into a fresh one so that returns are placed in sequential registers
 		call the function
-		*)
-		let register_list, instructions = List.fold_left (fun (register_list,instructions) expr -> 
-			let code_of_exp = compile_exp expr new_reg local_env in 
-			let reg_of_obj, code_of_exp = retrieve_return code_of_exp in 
-			let instructions = Array.append instructions code_of_exp in 
-			let register_list = register_list@[reg_of_obj] in 
-			(register_list,instructions) 
-		) ([], instructions) arg_lst in 
+	*)
+	let register_list, instructions = List.fold_left (fun (register_list,instructions) expr -> 
+		let code_of_exp = compile_exp expr new_reg local_env in 
+		let reg_of_obj, code_of_exp = retrieve_return code_of_exp in 
+		let instructions = Array.append instructions code_of_exp in 
+		let register_list = register_list@[reg_of_obj] in 
+		(register_list,instructions) 
+	) ([], instructions) arg_lst in 
 			
-		let starting_position_of_arguments = new_reg () in 
-		let instructions = Array.append instructions [|I_mov ((`L_Reg starting_position_of_arguments), obj_reg)|] in 
+	let starting_position_of_arguments = new_reg () in 
+	let instructions = Array.append instructions [|I_mov ((`L_Reg starting_position_of_arguments), obj_reg)|] in 
 		
-		let instructions = List.fold_left (fun instructions reg -> 
-			let new_reg_pos = new_reg () in 
-			Array.append instructions [|I_mov ((`L_Reg new_reg_pos), reg)|]
-		) instructions register_list in 
+	let instructions = List.fold_left (fun instructions reg -> 
+		let new_reg_pos = new_reg () in 
+		Array.append instructions [|I_mov ((`L_Reg new_reg_pos), reg)|]
+	) instructions register_list in 
 		
-		let val_r0 = new_reg () in
-		let r0 = `L_Reg val_r0 in 
-		let r1 = `L_Reg (new_reg ()) in
-		let r3 = `L_Reg (new_reg ()) in
-		let r4 = `L_Reg (new_reg ()) in
-		let r5 = `L_Reg (new_reg ()) in
-		let r6 = `L_Reg (new_reg ()) in
+	let val_r0 = new_reg () in
+	let r0 = `L_Reg val_r0 in 
+	let r1 = `L_Reg (new_reg ()) in
+	let r3 = `L_Reg (new_reg ()) in
+	let r4 = `L_Reg (new_reg ()) in
+	let r5 = `L_Reg (new_reg ()) in
+	let r6 = `L_Reg (new_reg ()) in
 		
-		let call_instr = [|
-			I_const (r0, Const.const_vtable);
-			I_const (r1, (`L_Str meth_name));
-			I_const (r5, (`L_Str const_sup));
-			I_rd_glob (r6, Const.const_class_table);
+	Array.append instructions [|
+		I_const (r0, Const.const_vtable);
+		I_const (r1, (`L_Str meth_name));
+		I_const (r5, (`L_Str const_sup));
+		I_rd_glob (r6, Const.const_class_table);
+					
+		I_rd_tab (r3, (`L_Reg starting_position_of_arguments), r0); (*get the method table*) 
 			
-			
-			I_rd_tab (r3, (`L_Reg starting_position_of_arguments), r0); (*get the method table*) 
-			
-			I_has_tab(r4, r3, r1); (*checks if the method exists. *JUMP BACK TO HERE* *)
-			I_if_zero(r4, 3); (*branch to checking superclass*)
+		I_has_tab(r4, r3, r1); (*checks if the method exists. *JUMP BACK TO HERE* *)
+		I_if_zero(r4, 3); (*branch to checking superclass*)
 		
-			(*the method belonds to the current class*)
-			I_rd_tab (r4, r3, r1); (*get the function name*)
-			I_call (r4, starting_position_of_arguments, (val_r0 - 1)); (*call the function, result will be in start_pos*)
-			I_jmp 7; (*jump to the return statement*)
+		(*the method belonds to the current class*)
+		I_rd_tab (r4, r3, r1); (*get the function name*)
+		I_call (r4, starting_position_of_arguments, (val_r0 - 1)); (*call the function, result will be in start_pos*)
+		I_jmp 7; (*jump to the return statement*)
 			
-			I_has_tab (r4, r3, r5); (*check for superclass - object has no superclass -> method DNE*)
-			I_if_zero (r4, 3); (*jumps to halt instruction for method DNE.*)
+		I_has_tab (r4, r3, r5); (*check for superclass - object has no superclass -> method DNE*)
+		I_if_zero (r4, 3); (*jumps to halt instruction for method DNE.*)
 			
-			(*load the superclasses class table into r3 and jump back to *JUMP BACK TO HERE*
-			thus searching for the method_name through each superclass until it is found, or
-			the search reaches Object class and still hasn't found the method name, thus signaling it DNE*)
-			I_rd_tab (r4, r3, r5); (*get the superclass name*)
-			I_rd_tab(r3, r6, r4); (*get the superclass method table*)
-			I_jmp (-10); (*jump back to *JUMP BACK TO HERE**)
+		(*load the superclasses class table into r3 and jump back to *JUMP BACK TO HERE*
+		thus searching for the method_name through each superclass until it is found, or
+		the search reaches Object class and still hasn't found the method name, thus signaling it DNE*)
+		I_rd_tab (r4, r3, r5); (*get the superclass name*)
+		I_rd_tab(r3, r6, r4); (*get the superclass method table*)
+		I_jmp (-10); (*jump back to *JUMP BACK TO HERE**)
 			
-			(*the method DNE, signal a halt*)
-			I_const (r0, (`L_Str "No such method"));
-			I_halt r0;
+		(*the method DNE, signal a halt*)
+		I_const (r0, (`L_Str "No such method"));
+		I_halt r0;
 			
-			I_ret (`L_Reg starting_position_of_arguments) (*return the result of the call*)
-		|] in 
-		Array.append instructions call_instr
+		I_ret (`L_Reg starting_position_of_arguments) (*return the result of the call*)
+	|] 
+
 ;;
+
    
 let set_up_local_env arg_lst = 
 	let local_env = Hashtbl.create 17 in 
