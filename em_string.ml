@@ -151,7 +151,7 @@ let create_string_class vm_prog =
 		I_const (r2, (`L_Id "String___length")); (*length function name*)
 		I_wr_tab (r0, r1, r2); (*map length*)
 		
-		I_rd_glob (r3, (`L_Id "___ClassTable")); (*gets the class table*)
+		I_rd_glob (r3, Const.const_class_table); (*gets the class table*)
 		I_const (r4, (`L_Str "String")); (*loads Object=class name into register*)
 		I_wr_tab (r3, r4, r0) (*Maps Object->tabl mapping method to function names*)
 	|]

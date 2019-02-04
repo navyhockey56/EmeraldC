@@ -44,18 +44,17 @@ let create_new_object class_name new_reg =
 
 let create_new_object_with_contents class_name new_reg contents =
 	let instructions = create_new_object class_name new_reg in 
-	let _, instructions = retrieve_return instructions in 
+	let return_reg, instructions = retrieve_return instructions in 
 
-	let r3 = new_reg () in 
-	let r4 = new_reg () in 
-	let r5 = new_reg () in  
+	let r1 = new_reg () in 
+	let r2 = new_reg () in  
 
 	Array.append instructions 
 	[|
-		I_const ((`L_Reg r4), Const.const_contents);
-		I_const ((`L_Reg r5), contents);
-		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); 
-		I_ret (`L_Reg r3)
+		I_const ((`L_Reg r1), Const.const_contents);
+		I_const ((`L_Reg r2), contents);
+		I_wr_tab (return_reg, (`L_Reg r1), (`L_Reg r2)); 
+		I_ret return_reg
 	|]
 
 ;;
