@@ -1,3 +1,5 @@
+open Instr
+open Const 
 open Helpers
 (*********************************************************************)
 
@@ -107,7 +109,7 @@ let create_length_method =
 		I_wr_tab (r3, r4, r2); (*map #vtable->method table for the integer*)
 			
 		I_const (r4, Const.const_contents); (*key for mapping in the value of Integer*)
-		I_wr_tab (r3, r4, r5; (*map #contents->Int value of n*)
+		I_wr_tab (r3, r4, r5); (*map #contents->Int value of n*)
 		I_ret r3
 	|]
 ;;

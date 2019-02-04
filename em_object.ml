@@ -1,3 +1,5 @@
+open Instr
+open Const 
 open Helpers
 (*********************************************************************)
 
@@ -11,8 +13,7 @@ let r5 = `L_Reg 5;;
 (*********************************************************************)
 
 let create_equal_method = 
-
-	let equal_method = [| (*code for equals methods*) 
+	[| (*code for equals methods*) 
 		I_eq (r0, r0, r1); (*checks pointer equality*)
 		I_if_zero (r0, 12);
 		
@@ -35,18 +36,6 @@ let create_equal_method =
 			
 		I_rd_glob (r1, Const.const_null);
 		I_ret r1
-	|] in 
-
-	(*creates a new integer object containing 1*)
-	let new_reg = Helpers.next_location_func () in 
-	let int_reg, generate_integer_1 = Helpers.create_integer_obj 1 new_reg in  
-	
-	(*appends integer instructions*)
-	let equal_method = Array.append equal_method generate_integer_1 in 
-	
-	Array.append equal_method 
-	[|
-		I_ret int_reg
 	|] 
 ;;
 
@@ -73,7 +62,7 @@ let create_to_s_method =
 
 let create_print_method = 
 	[|
-		I_rd_glob (r1, (`L_Id const_null));
+		I_rd_glob (r1, Const.const_null);
 		I_ret r1
 	|]
 ;;
@@ -102,7 +91,7 @@ let create_object_class vm_prog =
 		I_wr_tab (r0, r1, r2); (*map print*)
 		
 		I_rd_glob (r3, Const.const_class_table); (*gets the class table*)
-		I_const (r4, Const.obj); (*loads Object=class name into register*)
+		I_const (r4, Const.const_obj); (*loads Object=class name into register*)
 		I_wr_tab (r3, r4, r0) (*Maps Object->tabl mapping method to function names*)
 	|] 
 ;;

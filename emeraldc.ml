@@ -1,3 +1,9 @@
+open Instr
+open Ast 
+
+open Const 
+open Helpers
+
 open Em_object
 open Em_string
 open Em_integer
@@ -12,14 +18,13 @@ let retrieve_return instructions =
 	| _ -> failwith "return was not the last instruction"
 ;;
 
-let create_new_object class_name new_reg contents =
+let create_new_object class_name new_reg = 
 	let r0 = new_reg () in 
 	let r1 = new_reg () in 
 	let r2 = new_reg () in 
 	let r3 = new_reg () in 
 	let r4 = new_reg () in 
 	
-	let instructions = 	
 	[|
 		I_rd_glob ((`L_Reg r0), Const.const_class_table);
 		I_const ((`L_Reg r1), (`L_Str class_name));
@@ -32,26 +37,34 @@ let create_new_object class_name new_reg contents =
 			
 		I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of String*)
 		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the string*)
-	|] in 
+		
+		I_ret (`L_Reg r3)
+	|]
+;;
 
-	if not (contents = ()) then 
-		(* Set the content of the String object to the passed sptring *)	
-		let r5 = new_reg () in 
-		Array.append instructions [|
-			I_const ((`L_Reg r4), Const.const_contents);
-			I_const ((`L_Reg r5), contents);
-			I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); 
-		|]
-	else ();
+let create_new_object_with_contents class_name new_reg contents =
+	let instructions = create_new_object class_name new_reg in 
+	let _, instructions = retrieve_return instructions in 
 
-	Array.append instructions [|I_ret (`L_Reg r3)|]
+	let r3 = new_reg () in 
+	let r4 = new_reg () in 
+	let r5 = new_reg () in  
+
+	Array.append instructions 
+	[|
+		I_const ((`L_Reg r4), Const.const_contents);
+		I_const ((`L_Reg r5), contents);
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r5)); 
+		I_ret (`L_Reg r3)
+	|]
+
 ;;
 
 (*  
 	Create the instructions for an integer.
 *)
 let compile_eint n new_reg =
-	create_new_object Const.const_int new_reg (`L_Int n)
+	create_new_object_with_contents Const.class_name_int new_reg (`L_Int n)
 ;;
 
 (*
@@ -81,13 +94,13 @@ let compile_eself new_reg local_env =
 	Create instructions for a raw string
 *)
 let compile_estring str new_reg = 
-	create_new_object Const.const_string new_reg (`L_Str str)
+	create_new_object_with_contents Const.class_name_string new_reg (`L_Str str)
 ;;
 
 (*
 	Create instructions for a variable read  
 *)
-let compile_elocrd id new_reg = 
+let compile_elocrd id new_reg local_env = 
 	if (Hashtbl.mem local_env id) then (* the variable is bound *)
 		[| I_ret (Hashtbl.find local_env id) |]
 	else (* the variable is not bound, return nil *)
@@ -97,7 +110,7 @@ let compile_elocrd id new_reg =
 (*
 	Create instructions for a field read
 *)
-let compile_eflrd id new_reg = 
+let compile_eflrd id new_reg local_env = 
 	let r0 = `L_Reg (new_reg ()) in 
 	let r1 = `L_Reg (new_reg ()) in 
 	let self = Hashtbl.find local_env const_self in
@@ -127,7 +140,7 @@ let compile_new_map new_reg =
 		
 	[|
 		I_rd_glob ((`L_Reg r0), Const.const_class_table);
-		I_const ((`L_Reg r1), (`L_Str const_map));
+		I_const ((`L_Reg r1), Const.const_map);
 		I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for integers*)
 			
 		I_mk_tab (`L_Reg r3); (*create the table representing the integer*)
@@ -167,14 +180,14 @@ let rec compile_exp exp new_reg local_env =
   | EString str -> 
 		compile_estring str new_reg
   
-  | ELocRd id (*string*) ->   (* Read a local variable *) 
-  	compile_elocrd id new_reg
+  | ELocRd id (*string*) -> 
+  	compile_elocrd id new_reg local_env
   
   | ELocWr (id, exp) (*string * expr*) ->  (* Write a local variable *) 
 		compile_elocwr id exp new_reg local_env
 		
   | EFldRd id (*string*) -> 
-		compile_eflrd id new_reg
+		compile_eflrd id new_reg local_env
 			
   | EFldWr (id, exp) (*string * expr*) ->  
   	compile_eflwr id exp new_reg local_env
@@ -201,7 +214,7 @@ let rec compile_exp exp new_reg local_env =
   	compile_new_bot ()
   
   | ENew class_name (*string*) -> 
-  	create_new_object class_name new_reg ()
+  	create_new_object class_name new_reg
 		
   | EInstanceOf (obj, class_name) (*expr * string*) -> 
 		compile_einstanceof obj class_name new_reg local_env
@@ -262,7 +275,7 @@ and compile_eif exp1 exp2 exp3 new_reg local_env =
 	let instructions1 = [|
 		I_const (r0, Const.const_class);
 		I_rd_tab (r1, exp_obj1, r0);
-		I_const (r2, (`L_Str const_bot));
+		I_const (r2, Const.const_bot);
 			
 		I_eq (r3, r1, r2);
 		I_if_zero (r3, ((Array.length code_of_exp3) + 2));
@@ -300,7 +313,7 @@ and compile_ewhile exp1 exp2 new_reg local_env =
 	let instructions = [|
 		I_const (r0, Const.const_class);
 		I_rd_tab (r1, exp_obj1, r0);
-		I_const (r2, (`L_Str const_bot));
+		I_const (r2, Const.const_bot);
 			
 		I_eq (r3, r1, r2);
 		I_const (r4, `L_Int 1);
@@ -403,7 +416,7 @@ and compile_einvoke obj meth_name arg_lst new_reg local_env =
 	Array.append instructions [|
 		I_const (r0, Const.const_vtable);
 		I_const (r1, (`L_Str meth_name));
-		I_const (r5, (`L_Str const_sup));
+		I_const (r5, Const.const_sup);
 		I_rd_glob (r6, Const.const_class_table);
 					
 		I_rd_tab (r3, (`L_Reg starting_position_of_arguments), r0); (*get the method table*) 
@@ -482,7 +495,7 @@ let create_class cls (vm_prog:prog) =
 		let instructions = [|	
 			I_mk_tab (`L_Reg 0); (*create the method table*)
 			
-			I_const ((`L_Reg 1), (`L_Str const_sup)); (*key for mapping superclass*)
+			I_const ((`L_Reg 1), Const.const_sup); (*key for mapping superclass*)
 			I_const ((`L_Reg 2), (`L_Str sup)); (*superclass name for mapping superclass*)
 			I_wr_tab ((`L_Reg 0), (`L_Reg 1), (`L_Reg 2)); (*map #sup->superclass in method table*)
 			
@@ -617,20 +630,20 @@ let create_class_table =
 	|] 
 ;;
 
-let create_class_instructions = 
+let create_class_instructions vm_prog class_list = 
 	let built_in_instr = built_in_classes vm_prog in 
 	let user_def_instr = create_other_classes vm_prog class_list in 
-	Array.append user_def_instr built_in_instr 
+	let main_instructions = Array.append user_def_instr built_in_instr in 
 	
 	(*Append the instructions for creating the null value onto the end of main*)
 	let main_instructions = Array.append main_instructions create_null_instructions in 
 	
 	(*Append the instructions for creating the null value onto the end of main*)
-	let main_instructions = Array.append main_instructions create_obj_instructions in 
+	 Array.append main_instructions create_obj_instructions
 ;;
 
 
-let create_expression_instr = 
+let create_expression_instr expr = 
 	
 	(* Set up the env for compilation of the expression *)
 	let local_env = (Hashtbl.create 17) in 
@@ -642,7 +655,7 @@ let create_expression_instr =
 		the local env. 
 	*)
 	let new_reg = Helpers.next_location_func () in 
-	new_reg ();
+	let _ = new_reg () in 
 	
 	(* 
 		Set up the instructions for the main expression of the program.
@@ -650,7 +663,7 @@ let create_expression_instr =
 		it can be passed to it's to_s method, thus printing it out
 		at the termination of the program.
 	*)
-	let expression_instructions = compile_exp exp new_reg local_env in 
+	let expression_instructions = compile_exp expr new_reg local_env in 
 	let returned_obj, expression_instructions = retrieve_return expression_instructions in 
 			
 	Array.append expression_instructions (create_call_to_s returned_obj)
@@ -664,7 +677,7 @@ let create_main_instructions p vm_prog =
 	let main_instructions = create_class_table in 
 	
 	(* Set up the classes *)
-	let main_instructions = Array.append main_instructions create_class_instructions in
+	let main_instructions = Array.append main_instructions (create_class_instructions vm_prog class_list) in
 	
 	(* Set up the global Null object *)
 	let main_instructions = Array.append main_instructions create_null_instructions in 
@@ -676,7 +689,7 @@ let create_main_instructions p vm_prog =
 	Hashtbl.replace vm_prog "my_iter" create_my_iter; 
 	
 	(* Set up the expression of the main expression *)		
-	Array.append main_instructions create_expression_instr
+	Array.append main_instructions (create_expression_instr exp)
 ;;
 
 
@@ -686,7 +699,7 @@ let compile_prog (p:rube_prog):prog =
 	let vm_prog = Hashtbl.create 17 in 
 	
 	(*Map the main function to the instructions that have been generated*)
-	Hashtbl.replace vm_prog "main" (create_main_instructions vm_prog;
+	Hashtbl.replace vm_prog "main" (create_main_instructions p vm_prog);
 
 	(*Return the rubevm program*)
 	vm_prog 
