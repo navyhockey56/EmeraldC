@@ -1,5 +1,4 @@
 open Ast
-open Instr
 open Disassembler
 open Emeraldc
 
@@ -68,6 +67,15 @@ and print_program ({prog_clss=clss; prog_main=main}:rube_prog) = match clss with
 ;;
 
 
+let rec determine_file_name file_name = 
+  let length = String.length file_name in 
+  match (String.index_from_opt file_name 0 '/') with 
+    | None -> String.sub file_name 0 (length - 3)
+    | Some i -> 
+      let file_name = String.sub file_name (i + 1) (length - i - 1) in 
+      determine_file_name file_name 
+;;
+
 let parse_file name =
   let chan = open_in name in
   let lexbuf = Lexing.from_channel chan in
@@ -77,9 +85,11 @@ let parse_file name =
 ;;
 
 let main () =
-  let p = parse_file Sys.argv.(1) in
+  let input_file_name = Sys.argv.(1) in 
+  let p = parse_file input_file_name in
   let (p':Instr.prog) = Emeraldc.compile_prog p in
-  let out_chan = open_out "rubec.out" in
+  let output_file_name = (determine_file_name input_file_name) ^ ".evm" in 
+  let out_chan = open_out output_file_name in
   disassemble out_chan p'
 ;;
 
