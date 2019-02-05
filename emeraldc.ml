@@ -28,15 +28,15 @@ let create_new_object class_name new_reg =
 	[|
 		I_rd_glob ((`L_Reg r0), Const.const_class_table);
 		I_const ((`L_Reg r1), (`L_Str class_name));
-		I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for strings*)
+		I_rd_tab ((`L_Reg r2), (`L_Reg r0), (`L_Reg r1)); (*get the method table for the class*)
 
-		I_mk_tab (`L_Reg r3); (*create the table representing the string*)
+		I_mk_tab (`L_Reg r3); (*create the table representing the object*)
 
-		I_const ((`L_Reg r4), Const.const_class); (*for mapping in the class name of Integer*)
-		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1)); (*map #class->Integer*)
+		I_const ((`L_Reg r4), Const.const_class); (*map in the class name*)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r1));
 
-		I_const ((`L_Reg r4), Const.const_vtable); (*for mapping in the methods table of String*)
-		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2)); (*map #vtable->method table for the string*)
+		I_const ((`L_Reg r4), Const.const_vtable); (* map in the method table *)
+		I_wr_tab ((`L_Reg r3), (`L_Reg r4), (`L_Reg r2));
 
 		I_ret (`L_Reg r3)
 	|]
@@ -557,38 +557,6 @@ let create_obj_instructions =
 	|]
 ;;
 
-let create_my_iter =
-	[|
-		I_mov ((`L_Reg 4), (`L_Reg 2));
-		I_mov ((`L_Reg 5), (`L_Reg 1));
-		I_mov ((`L_Reg 6), (`L_Reg 0));
-		I_mov ((`L_Reg 0), (`L_Reg 4));
-		I_mov ((`L_Reg 2), (`L_Reg 5));
-		I_mov ((`L_Reg 1), (`L_Reg 6));
-
-		I_const ((`L_Reg 3), Const.const_vtable);
-		I_rd_tab ((`L_Reg 4), (`L_Reg 0), (`L_Reg 3));
-
-		I_const ((`L_Reg 5), (`L_Str "move")); (*load to_s method name*)
-
-		(*check if the object has a to_s method and branch accordingly*)
-		I_has_tab ((`L_Reg 6), (`L_Reg 4), (`L_Reg 5));
-		I_if_zero ((`L_Reg 6), 3);
-
-		(*the object did have a to_s method*)
-		I_rd_tab ((`L_Reg 6), (`L_Reg 4), (`L_Reg 5)); (*get the function name from the method table*)
-		I_call ((`L_Reg 6), 0, 2); (*call the to_s function*)
-		I_ret (`L_Reg 0); (*return the result*)
-
-		(*the object did not have a to_s method*)
-		I_const ((`L_Reg 7), Const.const_sup);
-		I_rd_tab ((`L_Reg 6), (`L_Reg 4), (`L_Reg 7)); (*get the superclass name*)
-		I_rd_glob ((`L_Reg 8), Const.const_class_table); (*get the classtable*)
-		I_rd_tab ((`L_Reg 4), (`L_Reg 8), (`L_Reg 7)); (*store the superclasses class table in reg2*)
-		I_jmp (-10) (*go back to check for to_s method*)
-	|]
-;;
-
 let create_call_to_s returned_obj =
 	[|
 		I_mov ((`L_Reg 1), returned_obj); (*make sure the object isnt overwritten*)
@@ -678,8 +646,8 @@ let create_main_instructions p vm_prog =
 	(* Set up the global Object object*)
 	let main_instructions = Array.append main_instructions create_obj_instructions in
 
-	(* Add what looks like a hack to iter *)
-	Hashtbl.replace vm_prog "my_iter" create_my_iter;
+	(* Add the my_iter function for use by Map's iter call *)
+	Hashtbl.replace vm_prog "my_iter" Em_map.my_iter;
 
 	(* Set up the expression of the main expression *)
 	Array.append main_instructions (create_expression_instr exp)
