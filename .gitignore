@@ -1,3 +1,3 @@
 *.sh
 _build/*
-*.out
+*.evm

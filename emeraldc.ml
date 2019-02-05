@@ -324,10 +324,10 @@ and compile_ewhile exp1 exp2 new_reg local_env =
 	let instructions = Array.append instructions code_of_exp2 in 
 	let instructions = Array.append instructions [|I_jmp ((-1)*((Array.length code_of_exp2) + (Array.length code_of_exp1) + 8))|] in 
 		
-	let instructions1 = [|
+	Array.append instructions 
+	[|
 		I_ret exp_obj1
-	|] in 
-	Array.append instructions instructions1
+	|]
 
 and compile_eseq exp1 exp2 new_reg local_env = 
 	let code_of_exp1 = compile_exp exp1 new_reg local_env in (*generate code for exp1*)
