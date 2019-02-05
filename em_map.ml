@@ -70,38 +70,14 @@ let create_has_key_method =
 
 let create_iter_method =
   (*
-    r0 - self
-    r1 - should be the object defining the call method
-
-    There will be a method 'call' on r1 that we need to send
-    to the iter method. We also need to pass the Map represented
-    by r0 (self).
-
-   	the object's method will be in its method table under 'call'
-    which will return the of the actual method
-
-    You now appear to be running into a problem with the value reference being
-    nil... Not sure what's going on here
-
-		After further investigation, its clear that the v is a table (so it should be an object),
-		but it doesn't have a #vtable
-
-		Ugh there's nothing wrong with the way you're passing arguments to functions, so
-		you must be misunderstanding the structure of the contents table
-
-		OKAY! I think I have the issue figured out, the solution not so much...
-		The problem is that r0 corresponds to the key object, and r1 corresponds
-		to the value object. But the program right now thinks that r0 corresponds
-		to self, etc.
-
-		If iter's parameters were (input, key, value)
-		instead of (key, value, input)
-		then we would be able to call this correctly
-
-		okay if you do have a my_iter method, you can call iter,
-		and with iter, you can pass the third argument as the object
-		that has 'call'. From my_iter, you can then call the 'call' 
-		method on the object with the given key/value
+  	EmeraldVM Args:
+	    r0 - self
+	    r1 - should be the object defining the call method
+		
+		Call the built-in 'iter' function to run over the
+		table stored in contents, and to repeatedly invoke
+		the my_iter function (in order to re-order the inputs,
+		see my_iter below for more info).
   *)
 
   [|
@@ -124,11 +100,32 @@ let create_iter_method =
 	|]
 ;;
 
+(*********************************************************************)
+
 let my_iter = 
 	(*
-		r0 - key
-		r1 - value
-		r2 - callable object
+		EmeraldVM Args:
+			r0 - key
+			r1 - value
+			r2 - callable object
+
+		This method will be repeatadly called by the built-in, emeraldvm 'iter' function, with
+		the initial call to the built-in iter coming from the Map.iter method. The purpose
+		of this method is to re-order the input from prior to invoking the 'call' method...
+	
+		Explanation:
+		The iter function takes arguments as (table, function_to_call, input), and then
+		invokes function_to_call(r0=key, r1=value, r2=input)... The compilation of Emerald
+		depends on the fact that the 'self' object is contained in r0. Thus, all arguments
+		to a method invokation are placed in r1, r2, .., rN. This convention is incopatible
+		with iter becuase iter places the key into r0 (thus overwriting the self object).
+
+		To overcome this issue, Map.iter invokes iter(Map.contents, my_iter, Callable_Object),
+		and then each call to the my_iter function invokes Callable_Object(key, value). 
+
+		Note: You could probably also overcome the issue by overwriting the built in functions
+		for :start_iter and :iter within EmeraldVM to automatically perform the re-order. (but that
+		would be one of the hackiest hacks ever)
 	*)
 	[|
 		(*
@@ -139,6 +136,7 @@ let my_iter =
 		I_mov (r2, r1);
 		I_mov (r1, r3);
 
+		(* TODO: get superclass method if not exist *)
 		(* Get the call method from the callable object *)
 		I_const (r3, Const.const_vtable);
 		I_rd_tab (r3, r0, r3);
