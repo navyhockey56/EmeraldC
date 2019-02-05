@@ -85,9 +85,15 @@ let parse_file name =
 ;;
 
 let main () =
+  
+  (* Parse the input file *)
   let input_file_name = Sys.argv.(1) in 
   let p = parse_file input_file_name in
+
+  (* Compile the program *)
   let (p':Instr.prog) = Emeraldc.compile_prog p in
+
+  (* Write the program to the output file *)
   let output_file_name = (determine_file_name input_file_name) ^ ".evm" in 
   let out_chan = open_out output_file_name in
   disassemble out_chan p'

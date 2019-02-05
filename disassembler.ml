@@ -38,8 +38,26 @@ let dis_instr o = function
 let rec dis_instrs o (is:instr array) =
   Array.iter (fun i -> Printf.fprintf o "%a\n" dis_instr i) is
 
-let disassemble (out:out_channel) (p:prog) =
-  Hashtbl.iter (fun f is -> Printf.fprintf out "%s:\n" f; dis_instrs out is) p
+
+let disassemble (out:out_channel) (emeraldvm_prog:prog) =
+
+  let names = Hashtbl.fold ( fun function_name instructions result -> 
+    match function_name with 
+      | "main" -> result
+      | _ -> function_name::result
+  ) emeraldvm_prog [] in 
+
+  let names = List.sort ( fun a b -> 
+    String.compare a b 
+  ) names in 
+
+  let names = names@["main"] in 
+
+  List.iter ( fun function_name -> 
+      Printf.fprintf out "\n%s:\n" function_name; 
+      dis_instrs out (Hashtbl.find emeraldvm_prog function_name)
+  ) names 
+;;
 
 let print_heap h =
   Printf.printf "Heap mappings:\n";
