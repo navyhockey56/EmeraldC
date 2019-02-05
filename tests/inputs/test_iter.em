@@ -7,13 +7,6 @@ class MapCall < Object begin
     end
 end
 
-class Foo < Object begin
-	def foo(a,b)
-		a.print();
-		b.print()
-	end
-end
-
 m = new Map;
 i = 10;
 j = "world";
