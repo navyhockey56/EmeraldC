@@ -90,7 +90,6 @@ end
 
 class B < A begin
     def do_b()
-        "do @b factorial";
         acc = 1;
         b = @b;
         while b do
@@ -154,15 +153,14 @@ k = "hello";
 m.insert(i,"zero");
 m.insert(j,"one");
 m.insert(k,"world");
-a.true(m.has(i));
 a.true(m.has(j));
+a.true(m.has(i));
 a.true(m.has(k));
 a.equal?(m.find(i),"zero");
 a.equal?(m.find(j),"one");
 a.equal?(m.find(k),"world");
 n = new MapCall;
 m.iter(n);
-
 a.equal?(nil,nil);
 
 "test objects and inheritance";
@@ -171,21 +169,21 @@ clsA.init(2,4,"hello");
 a.equal?(clsA.do_a(),2);
 a.equal?(clsA.do_b(),4);
 a.equal?(clsA.do_c(),"hello");
-a.equal?(clsA.to_s(),"Object");
+a.equal?(clsA.to_s(),"");
 
 clsB = new B;
 clsB.init(2,4,"hello");
 a.equal?(clsB.do_a(),2);
 a.equal?(clsB.do_b(),24);
 a.equal?(clsB.do_c(),"hello");
-a.equal?(clsB.to_s(),"Object");
+a.equal?(clsB.to_s(),"");
 
 clsC = new C;
 clsC.init(2,4,"hello");
 a.equal?(clsC.do_a(),2);
 a.equal?(clsC.do_b(),4);
 a.equal?(clsC.do_c(),"hello world");
-a.equal?(clsC.to_s(),"Object");
+a.equal?(clsC.to_s(),"");
 
 clsZ = new Z;
 clsZ.init(2,4,"hello");
@@ -202,5 +200,5 @@ a.equal?(clsD.do_c(),"hello");
 a.equal?(clsD.to_s(),"a : 20, b : 24, c : hello");
 
 "make sure that toplevel is an Object";
-a.equal?(self.to_s(), "Object")
+a.equal?(self.to_s(), "")
 

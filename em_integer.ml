@@ -18,7 +18,15 @@ let r10 = `L_Reg 10;;
 (*********************************************************************)
 
 let create_equal_method =
+	(*
+		TODO: You need to add a nil check in here!
+	*)
 	[|
+		I_rd_glob (r2, Const.const_null);
+		I_eq(r2, r1, r2);
+		I_if_zero(r2, 1);
+		I_ret r1;
+
 		I_const (r2, Const.const_contents); (*for getting value of int object*)
 		I_rd_tab (r3, r0, r2); (*retrieve value of this integer*)
 		I_rd_tab (r4, r1, r2); (*retrieve value of this integer*)
